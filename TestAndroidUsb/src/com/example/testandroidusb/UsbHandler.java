@@ -1,20 +1,12 @@
 package com.example.testandroidusb;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
-import com.hoho.android.usbserial.util.SerialInputOutputManager;
 
-import android.R.bool;
-import android.R.integer;
+
 import android.content.Context;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
@@ -26,36 +18,39 @@ import android.util.Log;
 import android.widget.Toast;
 
 public class UsbHandler extends Handler {
-	public UsbManager usbManager;
-	public Context mContext;
 	
-	private MainActivity activity;
-	private SerialInputOutputManager mSerialInputOutputManager;
-	private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
-	private SerialInputOutputManager.Listener mListener;
-	private SerialWrite serialWrite;
-	private int counter = 0;
-	private int len = 0;
-	private int prevlen = 0;
-
-	public static UsbSerialPort mUsbSerialPort = null;
-	public boolean isWriting = false;
-	private Thread writeThread;
-	private final AtomicBoolean running = new AtomicBoolean(true);
-
 	private static final int MESSAGE_REFRESH = 101;
 	private static final long REFRESH_TIMEOUT_MILLIS = 5000;
 	private static final int CONNECT_USB = 102;
-	private static final int START_WRITE = 103;
 	private static final int STOP_WRITE = 104;
-	private static final int UPDATE_WRITE = 105;
+	private static final int STOP_READ = 106;
 	private static final int BAUD_RATE = 115200;
+	
+	public UsbManager usbManager;
+	public Context mContext;
+	public static UsbSerialPort mUsbSerialPort = null;
+	
+	private MainActivity activity;
+	private SerialReadRunnable.Listener mListener;
+	private SerialWriteRunnable mSerialWriteRunnable;
+	private SerialReadRunnable mSerialReadRunnable;
+	private Thread mWriteThread;
+	private Thread mReadThread;
 	private static final String TAG = UsbHandler.class.getSimpleName();
 
+	
+	
 	public UsbHandler(UsbManager manager, Context context, MainActivity activity) {
 		usbManager = manager;
 		mContext = context;
 		this.activity = activity;
+	}
+	
+	
+	public UsbHandler(UsbManager manager, Context context, SerialReadRunnable.Listener listener){
+		usbManager = manager;
+		mContext = context;
+		mListener = listener;
 	}
 
 	@Override
@@ -69,22 +64,17 @@ public class UsbHandler extends Handler {
 		case CONNECT_USB:
 			startConnection();
 			break;
-		case START_WRITE:
-			writeToUsb();
-			break;
 		case STOP_WRITE:
 			stopWriteToUsb();
 			break;
-		case UPDATE_WRITE:
-			updateWriteToUsb();
+		case STOP_READ:
+			stopReadFromUsb();
 			break;
 		default:
 			super.handleMessage(msg);
 			break;
 		}
 	}
-
-	
 
 	private void startConnection() {
 		if (mUsbSerialPort != null && usbManager != null) {
@@ -99,15 +89,16 @@ public class UsbHandler extends Handler {
 				mUsbSerialPort.setParameters(BAUD_RATE,
 						UsbSerialPort.DATABITS_8, UsbSerialPort.STOPBITS_1,
 						UsbSerialPort.PARITY_NONE);
-				Toast.makeText(mContext, "start connection", Toast.LENGTH_SHORT).show();
+				Toast.makeText(mContext, "start connection", Toast.LENGTH_SHORT)
+						.show();
 				startIOManager();
-				
+
 			} catch (Exception e) {
 				Log.e(TAG, "Error setting up device: " + e.getMessage(), e);
 				try {
 					mUsbSerialPort.close();
 				} catch (Exception e2) {
-					//Ignore.
+					// Ignore.
 				}
 				mUsbSerialPort = null;
 				return;
@@ -116,35 +107,30 @@ public class UsbHandler extends Handler {
 	}
 
 	private void startIOManager() {
-		if(mUsbSerialPort != null){
+		if (mUsbSerialPort != null) {
 			Log.d(TAG, "start io manager");
-			
-			mListener = new SerialInputOutputManager.Listener() {
-				
-				@Override
-				public void onRunError(Exception arg0) {
-					Log.e(TAG, "Listener error");
-				}
-				
-				@Override
-				public void onNewData(final byte[] data) {
-					if(activity != null){
-						activity.runOnUiThread(new Runnable() {
-							@Override
-							public void run() {
-								activity.updateReceivedData(data);
-							}
-						});
-						
+			if(mListener == null){
+				mListener = new SerialReadRunnable.Listener() {
+					@Override
+					public void OnReceivedMessage(final String data) {
+						if(activity != null){
+							activity.runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									activity.updateReceivedData(data);
+								}
+							});
+						}
 					}
-					
-				}
-			};
-			
-			mSerialInputOutputManager = new SerialInputOutputManager(mUsbSerialPort, mListener);
-			mExecutor.submit(mSerialInputOutputManager);
+				};
+				
+			}
+			readFromUsb();
+			writeToUsb();
 		}
 	}
+
+	
 
 	private void refreshDevicelist() {
 		new AsyncTask<Void, Void, List<UsbSerialPort>>() {
@@ -187,29 +173,36 @@ public class UsbHandler extends Handler {
 		}.execute((Void) null);
 
 	}
-	
-	public void writeToUsb(){
-		serialWrite = new SerialWrite(mUsbSerialPort);
-//		this.post(serialWrite);
-		serialWrite.isWriting = true;
-		writeThread = new Thread(serialWrite);
-		writeThread.start();
+
+	private void writeToUsb() {
+		mSerialWriteRunnable = new SerialWriteRunnable(mUsbSerialPort);
+		mSerialWriteRunnable.setWritingState(true);
+		mWriteThread = new Thread(mSerialWriteRunnable);
+		mWriteThread.start();
 	}
 	
-	private void stopWriteToUsb(){
-		serialWrite.isWriting = false;
-		writeThread.interrupt();
-	}
-	
-	private void updateWriteToUsb() {
-		counter++;
-		String data = Integer.toString(counter % 2);
-		serialWrite.updateSendingData(data);
+	private void readFromUsb() {
+		mSerialReadRunnable = new SerialReadRunnable(mUsbSerialPort, mListener);
+		mSerialReadRunnable.setState(true);
+		mReadThread = new Thread(mSerialReadRunnable);
+		mReadThread.start();
 	}
 
-	public void writeToUsb(String stateString) {
-		if(writeThread != null){
-			serialWrite.updateSendingData(stateString);
+	private void stopWriteToUsb() {
+		mSerialWriteRunnable.setWritingState(false);
+		mWriteThread.interrupt();
+		mWriteThread = null;
+	}
+	
+	private void stopReadFromUsb(){
+		mSerialReadRunnable.setState(false);
+		mReadThread.interrupt();
+		mReadThread = null;
+	}
+
+	public void updateSendingData(String stateString) {
+		if(mWriteThread != null){
+			mSerialWriteRunnable.updateSendingData(stateString);
 		}
 	}
 

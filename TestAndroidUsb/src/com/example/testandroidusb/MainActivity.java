@@ -37,6 +37,19 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
 	
+	public SerialReadRunnable.Listener mListener = new SerialReadRunnable.Listener() {
+		
+		@Override
+		public void OnReceivedMessage(final String data) {
+			runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					mTextView.setText(data);
+				}
+			});
+			
+		}
+	};
 	
 	private UsbManager mUsbManager;
 	private TextView mTextView;
@@ -48,10 +61,6 @@ public class MainActivity extends Activity {
 	private Button mRightUpButton;
 	private Button mRightDownButton;
 	private String stateString = "";
-//	private SerialInputOutputManager mSerialInputOutputManager;
-	
-	
-//	private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 	private static final int MESSAGE_REFRESH = 101;
 	private static final int START_WRITE = 103;
 	private static final int STOP_WRITE = 104;
@@ -63,7 +72,6 @@ public class MainActivity extends Activity {
 		public void onCheckedChanged(CompoundButton buttonView,
 				boolean isChecked) {
 			if(mCheckBox.isChecked()){
-//				data = "1";
 				mUsbHandler.sendEmptyMessage(START_WRITE);
 			}else{
 				mUsbHandler.sendEmptyMessage(STOP_WRITE);
@@ -92,7 +100,7 @@ public class MainActivity extends Activity {
 			default:
 				break;
 			}
-			mUsbHandler.writeToUsb(stateString);
+			mUsbHandler.updateSendingData(stateString);
 		}
 	};
 
@@ -117,7 +125,7 @@ public class MainActivity extends Activity {
 		mCheckBox.setOnCheckedChangeListener(chkListener);
 		mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 		mTextView = (TextView) findViewById(R.id.showConnectInfo);
-		mUsbHandler = new UsbHandler(mUsbManager, getApplicationContext(),this);
+		mUsbHandler = new UsbHandler(mUsbManager, getApplicationContext(), mListener);
 	}
 
 	protected void setState(String string) {
@@ -162,18 +170,8 @@ public class MainActivity extends Activity {
         mUsbHandler.removeMessages(MESSAGE_REFRESH);
     }
 	
-	public void updateReceivedData(byte[] data){
-		String dataString = new String(data);
-		mTextView.setText("E: " + dataString);
+	public void updateReceivedData(String data){
+		mTextView.setText(data);
 	}
-	
-	public void updateReceivedData(byte[] data, int length, int startpoint){
-		byte[] subdata = new byte[length];
-		for(int i = 0; i < length; i++){
-			subdata[i] = data[i + startpoint];
-		}
-		updateReceivedData(subdata);
-	}
-	
 	
 }
