@@ -9,7 +9,7 @@ public class SerialWriteRunnable implements Runnable{
 	private UsbSerialPort mUsbSerialPort = null;
 	private static final int TIMEOUT_MILLIS = 1;
 	
-	public String data  = "0";
+	public String data  = "m";
 	public AtomicBoolean isWriting = new AtomicBoolean(false);
 	
 	public SerialWriteRunnable(UsbSerialPort port){

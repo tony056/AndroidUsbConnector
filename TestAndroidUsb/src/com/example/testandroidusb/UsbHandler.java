@@ -202,8 +202,12 @@ public class UsbHandler extends Handler {
 
 	public void updateSendingData(String stateString) {
 		if(mWriteThread != null){
+			if(stateString.indexOf('\n') < 0){
+				stateString += '\n';
+			}
 			mSerialWriteRunnable.updateSendingData(stateString);
 		}
 	}
+	
 
 }

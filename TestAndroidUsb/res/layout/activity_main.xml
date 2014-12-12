@@ -14,39 +14,12 @@
     tools:context="com.example.testandroidusb.MainActivity" >
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/hello_world" 
         android:id="@+id/showConnectInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:maxLines="1"
-        android:scrollbars="vertical"/>
-
-    <CheckBox
-        android:id="@+id/send0or1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_below="@+id/showConnectInfo"
-        android:layout_marginTop="57dp"
-        android:text="CheckBox" />
-
-    <Button
-        android:id="@+id/counter"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/send0or1"
-        android:layout_marginLeft="61dp"
-        android:layout_toRightOf="@+id/send0or1"
-        android:text="Button" />
-
-    <Button
-        android:id="@+id/leftUp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/send0or1"
-        android:layout_below="@+id/send0or1"
-        android:layout_marginTop="56dp"
-        android:text="Left Up" />
+        android:scrollbars="vertical"
+        android:text="@string/hello_world" />
 
     <Button
         android:id="@+id/leftDown"
@@ -58,22 +31,39 @@
         android:text="Left Down" />
 
     <Button
-        android:id="@+id/rightUp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/leftUp"
-        android:layout_alignBottom="@+id/leftUp"
-        android:layout_marginLeft="18dp"
-        android:layout_toRightOf="@+id/send0or1"
-        android:text="Right Up" />
-
-    <Button
         android:id="@+id/rightDown"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignLeft="@+id/rightUp"
         android:layout_alignParentBottom="true"
         android:text="Right Down" />
+
+    <Button
+        android:id="@+id/rightUp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/leftUp"
+        android:layout_alignBottom="@+id/leftUp"
+        android:layout_marginLeft="21dp"
+        android:layout_toRightOf="@+id/counter"
+        android:text="Right Up" />
+
+    <Button
+        android:id="@+id/leftUp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/showConnectInfo"
+        android:layout_below="@+id/counter"
+        android:layout_marginTop="78dp"
+        android:text="Left Up" />
+
+    <Button
+        android:id="@+id/counter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/showConnectInfo"
+        android:layout_centerHorizontal="true"
+        android:text="Button" />
 
 </RelativeLayout>
 

@@ -54,32 +54,19 @@ public class MainActivity extends Activity {
 	private UsbManager mUsbManager;
 	private TextView mTextView;
 	private UsbHandler mUsbHandler;
-	private CheckBox mCheckBox;
 	private Button mButton;
 	private Button mLeftUpButton;
 	private Button mLeftDownButton;
 	private Button mRightUpButton;
 	private Button mRightDownButton;
-	private String stateString = "";
+	private String stateString = "P:";
+	private String speedString = "";
+	private int counter = 0;
 	private static final int MESSAGE_REFRESH = 101;
 	private static final int START_WRITE = 103;
 	private static final int STOP_WRITE = 104;
 	private static final int UPDATE_WRITE = 105;
 	
-	private CheckBox.OnCheckedChangeListener chkListener = new CheckBox.OnCheckedChangeListener(){
-
-		@Override
-		public void onCheckedChanged(CompoundButton buttonView,
-				boolean isChecked) {
-			if(mCheckBox.isChecked()){
-				mUsbHandler.sendEmptyMessage(START_WRITE);
-			}else{
-				mUsbHandler.sendEmptyMessage(STOP_WRITE);
-			}
-			
-			
-		}
-	};
 		
 	private Button.OnClickListener btnClickListener = new Button.OnClickListener(){
 		@Override
@@ -97,10 +84,14 @@ public class MainActivity extends Activity {
 			case R.id.rightDown:
 				setState("4");
 				break;
+			case R.id.counter:
+				counter++;
+				setSpeed();
 			default:
 				break;
 			}
-			mUsbHandler.updateSendingData(stateString);
+			Toast.makeText(getApplicationContext(), speedString, Toast.LENGTH_SHORT).show();
+			mUsbHandler.updateSendingData(speedString);
 		}
 	};
 
@@ -110,7 +101,7 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 		
 		mButton = (Button) findViewById(R.id.counter);
-//		mButton.setOnClickListener(btnClickListener);
+		mButton.setOnClickListener(btnClickListener);
 		mLeftUpButton = (Button) findViewById(R.id.leftUp);
 		mLeftUpButton.setOnClickListener(btnClickListener);
 		mLeftDownButton = (Button) findViewById(R.id.leftDown);
@@ -121,8 +112,6 @@ public class MainActivity extends Activity {
 		mRightDownButton = (Button) findViewById(R.id.rightDown);
 		mRightDownButton.setOnClickListener(btnClickListener);
 		
-		mCheckBox = (CheckBox) findViewById(R.id.send0or1);
-		mCheckBox.setOnCheckedChangeListener(chkListener);
 		mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 		mTextView = (TextView) findViewById(R.id.showConnectInfo);
 		mUsbHandler = new UsbHandler(mUsbManager, getApplicationContext(), mListener);
@@ -135,7 +124,7 @@ public class MainActivity extends Activity {
 			int index = stateString.indexOf(string);
 			stateString = stateString.substring(0, index) + stateString.substring(index + 1, stateString.length());
 		}
-		stateString += "\n";
+		stateString += ";";
 	}
 
 	@Override
@@ -172,6 +161,19 @@ public class MainActivity extends Activity {
 	
 	public void updateReceivedData(String data){
 		mTextView.setText(data);
+	}
+	
+	private void setSpeed(){
+		String speed = "low";
+		speedString = "";
+		if(counter % 3 == 0)
+			speed = "900";
+		else if(counter % 3 == 1)
+			speed = "1350";
+		else
+			speed = "1800";
+		speedString += speed;
+		mButton.setText("" + counter);
 	}
 	
 }
