@@ -32,10 +32,20 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.SeekBar;
+import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
+	
+	private static final int MIN_SPEED = 1000;
+	private static final int MAX_SPEED = 2000;
+	private static final int MESSAGE_REFRESH = 101;
+	private static final int START_WRITE = 103;
+	private static final int STOP_WRITE = 104;
+	private static final int UPDATE_WRITE = 105;
+	private static final int addSpeed = 100;
 	
 	public SerialReadRunnable.Listener mListener = new SerialReadRunnable.Listener() {
 		
@@ -55,77 +65,101 @@ public class MainActivity extends Activity {
 	private TextView mTextView;
 	private UsbHandler mUsbHandler;
 	private Button mButton;
-	private Button mLeftUpButton;
-	private Button mLeftDownButton;
-	private Button mRightUpButton;
-	private Button mRightDownButton;
-	private String stateString = "P:";
-	private String speedString = "";
-	private int counter = 0;
-	private static final int MESSAGE_REFRESH = 101;
-	private static final int START_WRITE = 103;
-	private static final int STOP_WRITE = 104;
-	private static final int UPDATE_WRITE = 105;
-	
+	private SeekBar leftUpSeekBar;
+	private SeekBar leftDownSeekBar;
+	private SeekBar rightUpSeekBar;
+	private SeekBar rightDownSeekBar;
+	private TextView leftUpSpeedTextView;
+	private TextView leftDownSpeedTextView;
+	private TextView rightUpSpeedTextView;
+	private TextView rightDownSpeedTextView;
+	private OnSeekBarChangeListener mOnSeekBarChangeListener = new OnSeekBarChangeListener() {
 		
-	private Button.OnClickListener btnClickListener = new Button.OnClickListener(){
 		@Override
-		public void onClick(View v) {
-			switch (v.getId()) {
-			case R.id.leftUp:
-				setState("1");
-				break;
-			case R.id.leftDown:
-				setState("2");
-				break;
-			case R.id.rightUp:
-				setState("3");
-				break;
-			case R.id.rightDown:
-				setState("4");
-				break;
-			case R.id.counter:
-				counter++;
-				setSpeed();
-			default:
-				break;
+		public void onStopTrackingTouch(SeekBar seekBar) {
+			
+		}
+		
+		@Override
+		public void onStartTrackingTouch(SeekBar seekBar) {
+			
+		}
+		
+		@Override
+		public void onProgressChanged(SeekBar seekBar, int progress,
+				boolean fromUser) {
+			if(isLocked){
+				setSpeedToAllMotors(progress);
+				updateTextview(0, speeds[0], true);
+			}else{
+				int index = 0;
+				switch (seekBar.getId()) {
+				case R.id.leftUp:
+					index = 0;
+					speeds[index] = MIN_SPEED + progress;
+					break;
+				case R.id.leftDown:
+					index = 1;
+					speeds[index] = MIN_SPEED + progress;
+					break;
+				case R.id.rightUp:
+					index = 2;
+					speeds[index] = MIN_SPEED + progress;
+					break;
+				case R.id.rightDown:
+					index = 3;
+					speeds[index] = MIN_SPEED + progress;
+					break;
+				}
+				updateTextview(index, speeds[index], false);
 			}
-			Toast.makeText(getApplicationContext(), speedString, Toast.LENGTH_SHORT).show();
-			mUsbHandler.updateSendingData(speedString);
+			mUsbHandler.updateSendingData(speedToString());
 		}
 	};
+	
+	private int[] speeds = {MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED};
+	private boolean[] speedsUp = {true, true, true, true};
+	private boolean isLocked = false;
+	
+	
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		mButton = (Button) findViewById(R.id.lock);
 		
-		mButton = (Button) findViewById(R.id.counter);
-		mButton.setOnClickListener(btnClickListener);
-		mLeftUpButton = (Button) findViewById(R.id.leftUp);
-		mLeftUpButton.setOnClickListener(btnClickListener);
-		mLeftDownButton = (Button) findViewById(R.id.leftDown);
-		mLeftDownButton.setOnClickListener(btnClickListener);
+		leftUpSeekBar = (SeekBar) findViewById(R.id.leftUp);
+		leftDownSeekBar = (SeekBar) findViewById(R.id.leftDown);
+		rightUpSeekBar = (SeekBar) findViewById(R.id.rightUp);
+		rightDownSeekBar = (SeekBar) findViewById(R.id.rightDown);
+		leftUpSeekBar.setMax(MAX_SPEED - MIN_SPEED);
+		leftDownSeekBar.setMax(MAX_SPEED - MIN_SPEED);
+		rightUpSeekBar.setMax(MAX_SPEED - MIN_SPEED);
+		rightDownSeekBar.setMax(MAX_SPEED - MIN_SPEED);
+		leftUpSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
+		leftDownSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
+		rightUpSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
+		rightDownSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
 		
-		mRightUpButton = (Button) findViewById(R.id.rightUp);
-		mRightUpButton.setOnClickListener(btnClickListener);
-		mRightDownButton = (Button) findViewById(R.id.rightDown);
-		mRightDownButton.setOnClickListener(btnClickListener);
+		leftUpSpeedTextView = (TextView) findViewById(R.id.leftUpSpeedText);
+		leftDownSpeedTextView = (TextView) findViewById(R.id.leftDownSpeedText);
+		rightUpSpeedTextView = (TextView) findViewById(R.id.rightUpSpeedText);
+		rightDownSpeedTextView = (TextView) findViewById(R.id.rightDownTextSpeed);
+		
 		
 		mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 		mTextView = (TextView) findViewById(R.id.showConnectInfo);
 		mUsbHandler = new UsbHandler(mUsbManager, getApplicationContext(), mListener);
 	}
 
-	protected void setState(String string) {
-		if(!(stateString.contains(string))){
-			stateString += string;
-		}else{
-			int index = stateString.indexOf(string);
-			stateString = stateString.substring(0, index) + stateString.substring(index + 1, stateString.length());
+	
+	protected void setSpeedToAllMotors(int progress) {
+		for(int i = 0;i < speeds.length; i++){
+			speeds[i] = MIN_SPEED + progress;
 		}
-		stateString += ";";
 	}
+
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -159,21 +193,47 @@ public class MainActivity extends Activity {
         mUsbHandler.removeMessages(MESSAGE_REFRESH);
     }
 	
+	
 	public void updateReceivedData(String data){
 		mTextView.setText(data);
 	}
 	
-	private void setSpeed(){
-		String speed = "low";
-		speedString = "";
-		if(counter % 3 == 0)
-			speed = "900";
-		else if(counter % 3 == 1)
-			speed = "1350";
-		else
-			speed = "1800";
-		speedString += speed;
-		mButton.setText("" + counter);
+	private void updateTextview(int index, int speed, boolean locked){
+		if(locked){
+			leftUpSpeedTextView.setText("" + speed);
+			leftDownSpeedTextView.setText("" + speed);
+			rightUpSpeedTextView.setText("" + speed);
+			rightDownSpeedTextView.setText("" + speed);
+		}else{
+			switch (index) {
+				case 0:
+					leftUpSpeedTextView.setText("" + speed);
+					break;
+				case 1:
+					leftDownSpeedTextView.setText("" + speed);
+					break;
+				case 2:
+					rightUpSpeedTextView.setText("" + speed);
+					break;
+				case 3:
+					rightDownSpeedTextView.setText("" + speed);
+					break;
+
+				default:
+					break;
+			}
+		}
+	}
+	
+	
+	private String speedToString(){
+		String value = "";
+		for(int i = 0; i < speeds.length; i++){
+			value += Integer.toString(speeds[i]);
+			value += ',';
+		}
+		value += '\n';
+		return value;
 	}
 	
 }

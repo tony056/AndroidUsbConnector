@@ -1,8 +1,7 @@
-<ScrollView 
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent" >
     
 <RelativeLayout
     android:layout_width="match_parent"
@@ -22,48 +21,80 @@
         android:text="@string/hello_world" />
 
     <Button
-        android:id="@+id/leftDown"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/leftUp"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="29dp"
-        android:text="Left Down" />
-
-    <Button
-        android:id="@+id/rightDown"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/rightUp"
-        android:layout_alignParentBottom="true"
-        android:text="Right Down" />
-
-    <Button
-        android:id="@+id/rightUp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/leftUp"
-        android:layout_alignBottom="@+id/leftUp"
-        android:layout_marginLeft="21dp"
-        android:layout_toRightOf="@+id/counter"
-        android:text="Right Up" />
-
-    <Button
-        android:id="@+id/leftUp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/showConnectInfo"
-        android:layout_below="@+id/counter"
-        android:layout_marginTop="78dp"
-        android:text="Left Up" />
-
-    <Button
-        android:id="@+id/counter"
+        android:id="@+id/lock"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignTop="@+id/showConnectInfo"
         android:layout_centerHorizontal="true"
         android:text="Button" />
+
+    <SeekBar
+        android:id="@+id/leftUp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/showConnectInfo"
+        android:layout_below="@+id/counter"
+        android:layout_marginTop="50dp" />
+
+    <SeekBar
+        android:id="@+id/leftDown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/leftUp"
+        android:layout_marginTop="35dp" />
+
+    <SeekBar
+        android:id="@+id/rightUp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/leftDown"
+        android:layout_marginTop="31dp" />
+
+    <TextView
+        android:id="@+id/leftUpSpeedText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/leftUp"
+        android:layout_marginTop="14dp"
+        android:layout_toLeftOf="@+id/lock"
+        android:text="TextView" />
+
+    <TextView
+        android:id="@+id/leftDownSpeedText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/leftUpSpeedText"
+        android:layout_below="@+id/leftDown"
+        android:layout_marginTop="16dp"
+        android:text="TextView" />
+
+    <SeekBar
+        android:id="@+id/rightDown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/rightUp"
+        android:layout_below="@+id/rightUp"
+        android:layout_marginTop="34dp" />
+
+    <TextView
+        android:id="@+id/rightUpSpeedText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/leftDownSpeedText"
+        android:layout_below="@+id/rightUp"
+        android:layout_marginTop="17dp"
+        android:text="TextView" />
+
+    <TextView
+        android:id="@+id/rightDownTextSpeed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/rightUpSpeedText"
+        android:layout_below="@+id/rightDown"
+        android:layout_marginTop="16dp"
+        android:text="TextView" />
 
 </RelativeLayout>
 
