@@ -1,37 +1,19 @@
 package com.example.testandroidusb;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.net.Socket;
 
-import com.hoho.android.usbserial.driver.UsbSerialDriver;
-import com.hoho.android.usbserial.driver.UsbSerialPort;
-import com.hoho.android.usbserial.driver.UsbSerialProber;
-import com.hoho.android.usbserial.util.HexDump;
-import com.hoho.android.usbserial.util.SerialInputOutputManager;
-
-import android.R.bool;
-import android.R.integer;
-import android.R.string;
+import HotSpotCommander.HotSpotServerEventHandler;
+import HotSpotCommander.HotSpotTCPServer;
 import android.app.Activity;
 import android.content.Context;
-import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
-import android.os.SystemClock;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.WindowManager;
+import android.view.View.OnClickListener;
 import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
@@ -62,8 +44,11 @@ public class MainActivity extends Activity {
 	};
 	
 	private UsbManager mUsbManager;
-	private TextView mTextView;
+	private HotSpotTCPServer mHoSpotTCPServer;
 	private UsbHandler mUsbHandler;
+	
+	
+	private TextView mTextView;
 	private Button mButton;
 	private SeekBar leftUpSeekBar;
 	private SeekBar leftDownSeekBar;
@@ -126,8 +111,46 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		setContentView(R.layout.activity_main);
+		mHoSpotTCPServer = new HotSpotTCPServer();
+		mHoSpotTCPServer.RegisterHandler(new HotSpotServerEventHandler() {
+			
+			@Override
+			public void OnReceiveMessage(Socket client, String message) {
+//				Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+				parseReceivedMessage(message);
+				mUsbHandler.updateSendingData(message);
+			}
+			
+			@Override
+			public void OnDisconnected(Socket client) {
+				mTextView.setText("Disconnected");
+			}
+			
+			@Override
+			public void OnConnected(Socket client) {
+				mTextView.setText("Connected");
+			}
+		});
+		
+		try {
+			mHoSpotTCPServer.Start(5566);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+			e.printStackTrace();
+		}
+		
 		mButton = (Button) findViewById(R.id.lock);
+		mButton.setOnClickListener(new OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				isLocked = !isLocked;
+				mButton.setText("" + isLocked);
+			}
+		});
 		
 		leftUpSeekBar = (SeekBar) findViewById(R.id.leftUp);
 		leftDownSeekBar = (SeekBar) findViewById(R.id.leftDown);
@@ -153,10 +176,31 @@ public class MainActivity extends Activity {
 		mUsbHandler = new UsbHandler(mUsbManager, getApplicationContext(), mListener);
 	}
 
-	
+
+
+	protected void parseReceivedMessage(String message) {
+		String data = message.substring(0, message.length() - 1);
+		String[] tokens = data.split(",");
+		if(tokens.length > 0 ){
+			for(int i = 0; i < tokens.length; i++){
+				speeds[i] = Integer.parseInt(tokens[i]);
+//				updateProgressBar(i, speeds[i] - MIN_SPEED);
+				updateTextview(i, speeds[i], false);
+			}
+		}
+		
+	}
+
+
+
 	protected void setSpeedToAllMotors(int progress) {
+		leftUpSeekBar.setProgress(progress);
+		leftDownSeekBar.setProgress(progress);
+		rightUpSeekBar.setProgress(progress);
+		rightDownSeekBar.setProgress(progress);
 		for(int i = 0;i < speeds.length; i++){
 			speeds[i] = MIN_SPEED + progress;
+			updateTextview(i, speeds[i], false);
 		}
 	}
 
@@ -196,6 +240,26 @@ public class MainActivity extends Activity {
 	
 	public void updateReceivedData(String data){
 		mTextView.setText(data);
+	}
+	
+	private void updateProgressBar(int index, int progress){
+		switch (index) {
+			case 0:
+				leftUpSeekBar.setProgress(progress);
+				break;
+			case 1:
+				leftDownSeekBar.setProgress(progress);
+				break;
+			case 2:
+				rightUpSeekBar.setProgress(progress);
+				break;
+			case 3:
+				rightDownSeekBar.setProgress(progress);
+				break;
+
+			default:
+				break;
+		}
 	}
 	
 	private void updateTextview(int index, int speed, boolean locked){

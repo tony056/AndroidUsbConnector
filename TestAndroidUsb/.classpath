@@ -6,5 +6,6 @@
 	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/usbSerialForAndroid"/>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="gen"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/HotSpotCommanderAPI"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>
