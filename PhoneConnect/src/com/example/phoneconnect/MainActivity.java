@@ -28,6 +28,8 @@ public class MainActivity extends ActionBarActivity {
 	
 	private static final int MIN_SPEED = 1000;
 	private static final int MAX_SPEED = 2000;
+	private static final int BALANCE_MIN = 0;
+	private static final int BALANCE_MAX = 100;
 	
 	HotSpotClientInterface client;
 	TextView wifiText;
@@ -40,10 +42,12 @@ public class MainActivity extends ActionBarActivity {
 	private SeekBar leftDownSeekBar;
 	private SeekBar rightUpSeekBar;
 	private SeekBar rightDownSeekBar;
+	private SeekBar balanceSeekBar;
 	private TextView leftUpSpeedTextView;
 	private TextView leftDownSpeedTextView;
 	private TextView rightUpSpeedTextView;
 	private TextView rightDownSpeedTextView;
+	private TextView balanceTextView;
 	
 	private OnSeekBarChangeListener mOnSeekBarChangeListener = new OnSeekBarChangeListener() {
 		
@@ -60,37 +64,49 @@ public class MainActivity extends ActionBarActivity {
 		@Override
 		public void onProgressChanged(SeekBar seekBar, int progress,
 				boolean fromUser) {
-			if(isLocked){
-				setSpeedToAllMotors(progress);
-				updateTextview(0, speeds[0], true);
-			}else{
-				int index = 0;
-				switch (seekBar.getId()) {
-				case R.id.leftUp:
-					index = 0;
-					speeds[index] = MIN_SPEED + progress;
-					break;
-				case R.id.leftDown:
-					index = 1;
-					speeds[index] = MIN_SPEED + progress;
-					break;
-				case R.id.rightUp:
-					index = 2;
-					speeds[index] = MIN_SPEED + progress;
-					break;
-				case R.id.rightDown:
-					index = 3;
-					speeds[index] = MIN_SPEED + progress;
-					break;
-				}
-				updateTextview(index, speeds[index], false);
+			
+		if(fromUser)
+		{
+			if(seekBar.getId() == R.id.balanceBar)
+			{
+				speeds[4] = BALANCE_MIN + progress;
+				balanceTextView.setText(""+speeds[4]);
 			}
-			sendMessage(speedToString());
+			else if(isLocked){
+					setSpeedToAllMotors(progress);
+					updateTextview(0, speeds[0], true);
+				}else{
+					int index = 0;
+					switch (seekBar.getId()) {
+					case R.id.leftUp:
+						index = 0;
+						speeds[index] = MIN_SPEED + progress;
+						break;
+					case R.id.leftDown:
+						index = 1;
+						speeds[index] = MIN_SPEED + progress;
+						break;
+					case R.id.rightUp:
+						index = 2;
+						speeds[index] = MIN_SPEED + progress;
+						break;
+					case R.id.rightDown:
+						index = 3;
+						speeds[index] = MIN_SPEED + progress;
+						break;
+					case R.id.balanceBar:
+						break;
+					}
+					
+					if(index != 4)
+						updateTextview(index, speeds[index], false);
+				}
+				sendMessage(speedToString());
+			}
 		}
 	};
 	
-	private int[] speeds = {MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED};
-	private boolean[] speedsUp = {true, true, true, true};
+	private int[] speeds = {MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED,BALANCE_MIN};
 	private boolean isLocked = false;
 	
 	
@@ -125,19 +141,25 @@ public class MainActivity extends ActionBarActivity {
 		leftDownSeekBar = (SeekBar) findViewById(R.id.leftDown);
 		rightUpSeekBar = (SeekBar) findViewById(R.id.rightUp);
 		rightDownSeekBar = (SeekBar) findViewById(R.id.rightDown);
+		balanceSeekBar = (SeekBar) findViewById(R.id.balanceBar);
+		
 		leftUpSeekBar.setMax(MAX_SPEED - MIN_SPEED);
 		leftDownSeekBar.setMax(MAX_SPEED - MIN_SPEED);
 		rightUpSeekBar.setMax(MAX_SPEED - MIN_SPEED);
 		rightDownSeekBar.setMax(MAX_SPEED - MIN_SPEED);
+		balanceSeekBar.setMax(BALANCE_MAX - BALANCE_MIN);
+		
 		leftUpSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
 		leftDownSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
 		rightUpSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
 		rightDownSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
+		balanceSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
 		
 		leftUpSpeedTextView = (TextView) findViewById(R.id.leftUpSpeedText);
 		leftDownSpeedTextView = (TextView) findViewById(R.id.leftDownSpeedText);
 		rightUpSpeedTextView = (TextView) findViewById(R.id.rightUpSpeedText);
 		rightDownSpeedTextView = (TextView) findViewById(R.id.rightDownSpeedText);
+		balanceTextView = (TextView) findViewById(R.id.balanceBarText);
 
         
         client = new HotSpotTCPClient();
@@ -296,6 +318,7 @@ public class MainActivity extends ActionBarActivity {
 			leftDownSpeedTextView.setText("" + speed);
 			rightUpSpeedTextView.setText("" + speed);
 			rightDownSpeedTextView.setText("" + speed);
+			
 		}else{
 			switch (index) {
 				case 0:
