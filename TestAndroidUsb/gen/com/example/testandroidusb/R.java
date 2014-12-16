@@ -25,7 +25,7 @@ public final class R {
         public static final int ic_launcher=0x7f020000;
     }
     public static final class id {
-        public static final int action_settings=0x7f09000b;
+        public static final int action_settings=0x7f09000c;
         public static final int counter=0x7f090003;
         public static final int leftDown=0x7f090004;
         public static final int leftDownSpeedText=0x7f090007;
@@ -36,6 +36,7 @@ public final class R {
         public static final int rightDownTextSpeed=0x7f09000a;
         public static final int rightUp=0x7f090005;
         public static final int rightUpSpeedText=0x7f090009;
+        public static final int sensorData=0x7f09000b;
         public static final int showConnectInfo=0x7f090000;
     }
     public static final class layout {

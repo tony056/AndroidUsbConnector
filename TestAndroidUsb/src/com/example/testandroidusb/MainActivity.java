@@ -4,8 +4,13 @@ import java.net.Socket;
 
 import HotSpotCommander.HotSpotServerEventHandler;
 import HotSpotCommander.HotSpotTCPServer;
+import android.R.integer;
 import android.app.Activity;
 import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.view.Menu;
@@ -19,8 +24,8 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends Activity {
-	
+public class MainActivity extends Activity implements SensorEventListener {
+
 	private static final int MIN_SPEED = 1000;
 	private static final int MAX_SPEED = 2000;
 	private static final int MESSAGE_REFRESH = 101;
@@ -28,9 +33,9 @@ public class MainActivity extends Activity {
 	private static final int STOP_WRITE = 104;
 	private static final int UPDATE_WRITE = 105;
 	private static final int addSpeed = 100;
-	
+
 	public SerialReadRunnable.Listener mListener = new SerialReadRunnable.Listener() {
-		
+
 		@Override
 		public void OnReceivedMessage(final String data) {
 			runOnUiThread(new Runnable() {
@@ -39,15 +44,15 @@ public class MainActivity extends Activity {
 					mTextView.setText(data);
 				}
 			});
-			
+
 		}
 	};
-	
+
 	private UsbManager mUsbManager;
 	private HotSpotTCPServer mHoSpotTCPServer;
 	private UsbHandler mUsbHandler;
-	
-	
+	private SensorManager mSensorManager;
+
 	private TextView mTextView;
 	private Button mButton;
 	private SeekBar leftUpSeekBar;
@@ -58,25 +63,26 @@ public class MainActivity extends Activity {
 	private TextView leftDownSpeedTextView;
 	private TextView rightUpSpeedTextView;
 	private TextView rightDownSpeedTextView;
+	private TextView sensorDataTextView;
 	private OnSeekBarChangeListener mOnSeekBarChangeListener = new OnSeekBarChangeListener() {
-		
+
 		@Override
 		public void onStopTrackingTouch(SeekBar seekBar) {
-			
+
 		}
-		
+
 		@Override
 		public void onStartTrackingTouch(SeekBar seekBar) {
-			
+
 		}
-		
+
 		@Override
 		public void onProgressChanged(SeekBar seekBar, int progress,
 				boolean fromUser) {
-			if(isLocked){
+			if (isLocked) {
 				setSpeedToAllMotors(progress);
 				updateTextview(0, speeds[0], true);
-			}else{
+			} else {
 				int index = 0;
 				switch (seekBar.getId()) {
 				case R.id.leftUp:
@@ -101,12 +107,15 @@ public class MainActivity extends Activity {
 			mUsbHandler.updateSendingData(speedToString());
 		}
 	};
-	
-	private int[] speeds = {MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED};
-	private boolean[] speedsUp = {true, true, true, true};
+
+	private int[] speeds = { MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED };
+	private boolean[] speedsUp = { true, true, true, true };
 	private boolean isLocked = false;
-	
-	
+	private float[] accel = new float[3];
+	private float[] magnet = new float[3];
+	private float[] gyro = new float[3];
+	private int ratio = 0;
+	private float[][] vectors = new float[4][2];
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -115,43 +124,45 @@ public class MainActivity extends Activity {
 		setContentView(R.layout.activity_main);
 		mHoSpotTCPServer = new HotSpotTCPServer();
 		mHoSpotTCPServer.RegisterHandler(new HotSpotServerEventHandler() {
-			
+
 			@Override
 			public void OnReceiveMessage(Socket client, String message) {
-//				Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+				// Toast.makeText(getApplicationContext(), message,
+				// Toast.LENGTH_SHORT).show();
 				parseReceivedMessage(message);
 				mUsbHandler.updateSendingData(message);
 			}
-			
+
 			@Override
 			public void OnDisconnected(Socket client) {
 				mTextView.setText("Disconnected");
 			}
-			
+
 			@Override
 			public void OnConnected(Socket client) {
 				mTextView.setText("Connected");
 			}
 		});
-		
+
 		try {
 			mHoSpotTCPServer.Start(5566);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
-			Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+			Toast.makeText(getApplicationContext(), e.getMessage(),
+					Toast.LENGTH_SHORT).show();
 			e.printStackTrace();
 		}
-		
+
 		mButton = (Button) findViewById(R.id.lock);
 		mButton.setOnClickListener(new OnClickListener() {
-			
+
 			@Override
 			public void onClick(View v) {
 				isLocked = !isLocked;
 				mButton.setText("" + isLocked);
 			}
 		});
-		
+
 		leftUpSeekBar = (SeekBar) findViewById(R.id.leftUp);
 		leftDownSeekBar = (SeekBar) findViewById(R.id.leftDown);
 		rightUpSeekBar = (SeekBar) findViewById(R.id.rightUp);
@@ -164,46 +175,57 @@ public class MainActivity extends Activity {
 		leftDownSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
 		rightUpSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
 		rightDownSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
-		
+
 		leftUpSpeedTextView = (TextView) findViewById(R.id.leftUpSpeedText);
 		leftDownSpeedTextView = (TextView) findViewById(R.id.leftDownSpeedText);
 		rightUpSpeedTextView = (TextView) findViewById(R.id.rightUpSpeedText);
 		rightDownSpeedTextView = (TextView) findViewById(R.id.rightDownTextSpeed);
-		
-		
+		sensorDataTextView = (TextView) findViewById(R.id.sensorData);
+
 		mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 		mTextView = (TextView) findViewById(R.id.showConnectInfo);
-		mUsbHandler = new UsbHandler(mUsbManager, getApplicationContext(), mListener);
+		mUsbHandler = new UsbHandler(mUsbManager, getApplicationContext(),
+				mListener);
+		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+		initSensors();
 	}
 
+	private void initSensors() {
+		mSensorManager.registerListener(this,
+				mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
+				SensorManager.SENSOR_DELAY_FASTEST);
+		mSensorManager.registerListener(this,
+				mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
+				SensorManager.SENSOR_DELAY_FASTEST);
+		mSensorManager.registerListener(this,
+				mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD),
+				SensorManager.SENSOR_DELAY_FASTEST);
 
+	}
 
 	protected void parseReceivedMessage(String message) {
 		String data = message.substring(0, message.length() - 1);
 		String[] tokens = data.split(",");
-		if(tokens.length > 0 ){
-			for(int i = 0; i < tokens.length; i++){
+		if (tokens.length > 0) {
+			for (int i = 0; i < tokens.length; i++) {
 				speeds[i] = Integer.parseInt(tokens[i]);
-//				updateProgressBar(i, speeds[i] - MIN_SPEED);
+				// updateProgressBar(i, speeds[i] - MIN_SPEED);
 				updateTextview(i, speeds[i], false);
 			}
 		}
-		
+
 	}
-
-
 
 	protected void setSpeedToAllMotors(int progress) {
 		leftUpSeekBar.setProgress(progress);
 		leftDownSeekBar.setProgress(progress);
 		rightUpSeekBar.setProgress(progress);
 		rightDownSeekBar.setProgress(progress);
-		for(int i = 0;i < speeds.length; i++){
+		for (int i = 0; i < speeds.length; i++) {
 			speeds[i] = MIN_SPEED + progress;
 			updateTextview(i, speeds[i], false);
 		}
 	}
-
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -223,81 +245,116 @@ public class MainActivity extends Activity {
 		}
 		return super.onOptionsItemSelected(item);
 	}
-	
+
 	@Override
-	public void onResume(){
+	public void onResume() {
 		super.onResume();
 		mUsbHandler.sendEmptyMessage(MESSAGE_REFRESH);
-		
+
 	}
-	
+
 	@Override
-    protected void onPause() {
-        super.onPause();
-        mUsbHandler.removeMessages(MESSAGE_REFRESH);
-    }
-	
-	
-	public void updateReceivedData(String data){
+	protected void onPause() {
+		super.onPause();
+		mUsbHandler.removeMessages(MESSAGE_REFRESH);
+		mSensorManager.unregisterListener(this);
+	}
+
+	public void updateReceivedData(String data) {
 		mTextView.setText(data);
 	}
-	
-	private void updateProgressBar(int index, int progress){
-		switch (index) {
-			case 0:
-				leftUpSeekBar.setProgress(progress);
-				break;
-			case 1:
-				leftDownSeekBar.setProgress(progress);
-				break;
-			case 2:
-				rightUpSeekBar.setProgress(progress);
-				break;
-			case 3:
-				rightDownSeekBar.setProgress(progress);
-				break;
 
-			default:
-				break;
+	private void updateProgressBar(int index, int progress) {
+		switch (index) {
+		case 0:
+			leftUpSeekBar.setProgress(progress);
+			break;
+		case 1:
+			leftDownSeekBar.setProgress(progress);
+			break;
+		case 2:
+			rightUpSeekBar.setProgress(progress);
+			break;
+		case 3:
+			rightDownSeekBar.setProgress(progress);
+			break;
+
+		default:
+			break;
 		}
 	}
-	
-	private void updateTextview(int index, int speed, boolean locked){
-		if(locked){
+
+	private void updateTextview(int index, int speed, boolean locked) {
+		if (locked) {
 			leftUpSpeedTextView.setText("" + speed);
 			leftDownSpeedTextView.setText("" + speed);
 			rightUpSpeedTextView.setText("" + speed);
 			rightDownSpeedTextView.setText("" + speed);
-		}else{
+		} else {
 			switch (index) {
-				case 0:
-					leftUpSpeedTextView.setText("" + speed);
-					break;
-				case 1:
-					leftDownSpeedTextView.setText("" + speed);
-					break;
-				case 2:
-					rightUpSpeedTextView.setText("" + speed);
-					break;
-				case 3:
-					rightDownSpeedTextView.setText("" + speed);
-					break;
+			case 0:
+				leftUpSpeedTextView.setText("" + speed);
+				break;
+			case 1:
+				leftDownSpeedTextView.setText("" + speed);
+				break;
+			case 2:
+				rightUpSpeedTextView.setText("" + speed);
+				break;
+			case 3:
+				rightDownSpeedTextView.setText("" + speed);
+				break;
 
-				default:
-					break;
+			default:
+				break;
 			}
 		}
 	}
-	
-	
-	private String speedToString(){
+
+	private String speedToString() {
 		String value = "";
-		for(int i = 0; i < speeds.length; i++){
+		for (int i = 0; i < speeds.length; i++) {
 			value += Integer.toString(speeds[i]);
 			value += ',';
 		}
 		value += '\n';
 		return value;
 	}
+
+	@Override
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onSensorChanged(SensorEvent event) {
+		switch (event.sensor.getType()) {
+			case Sensor.TYPE_ACCELEROMETER:
+				System.arraycopy(event.values, 0, accel, 0, 3);
+				break;
+			case Sensor.TYPE_GYROSCOPE:
+				System.arraycopy(event.values, 0, gyro, 0, 3);
+				break;
+			default:
+				break;
+		}
+		updateSensorTextView();
+	}
 	
+	private void updateSensorTextView(){
+		String data = "";
+		for(int i = 0; i < accel.length; i++){
+			data += String.format("%.2f", accel[i]);
+			data += ",";
+		}
+		data += "\n";
+		for(int i = 0; i < gyro.length; i++){
+			data += String.format("%.2f", gyro[i]);
+			data += ",";
+		}
+		data += "\n";
+		sensorDataTextView.setText(data);
+	}
+
 }

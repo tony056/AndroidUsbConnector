@@ -1,7 +1,7 @@
 int dimen activity_horizontal_margin 0x7f070000
 int dimen activity_vertical_margin 0x7f070001
 int drawable ic_launcher 0x7f020000
-int id action_settings 0x7f09000b
+int id action_settings 0x7f09000c
 int id counter 0x7f090003
 int id leftDown 0x7f090004
 int id leftDownSpeedText 0x7f090007
@@ -12,6 +12,7 @@ int id rightDown 0x7f090008
 int id rightDownTextSpeed 0x7f09000a
 int id rightUp 0x7f090005
 int id rightUpSpeedText 0x7f090009
+int id sensorData 0x7f09000b
 int id showConnectInfo 0x7f090000
 int layout activity_main 0x7f030000
 int menu main 0x7f080000
