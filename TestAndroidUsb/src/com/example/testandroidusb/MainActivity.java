@@ -1,12 +1,17 @@
 package com.example.testandroidusb;
 
 import java.net.Socket;
+import java.sql.Struct;
+import java.util.ArrayList;
+import java.util.LinkedList;
 
 import HotSpotCommander.HotSpotServerEventHandler;
 import HotSpotCommander.HotSpotTCPServer;
+import PIDController.PIDController;
 import android.R.integer;
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Path.Direction;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -16,8 +21,8 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
 import android.view.View.OnClickListener;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
@@ -33,6 +38,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	private static final int STOP_WRITE = 104;
 	private static final int UPDATE_WRITE = 105;
 	private static final int addSpeed = 100;
+	private static final int MAX_SMOOTH_COUNT = 10;
 
 	public SerialReadRunnable.Listener mListener = new SerialReadRunnable.Listener() {
 
@@ -79,44 +85,68 @@ public class MainActivity extends Activity implements SensorEventListener {
 		@Override
 		public void onProgressChanged(SeekBar seekBar, int progress,
 				boolean fromUser) {
-			if (isLocked) {
-				setSpeedToAllMotors(progress);
-				updateTextview(0, speeds[0], true);
-			} else {
-				int index = 0;
-				switch (seekBar.getId()) {
-				case R.id.leftUp:
-					index = 0;
-					speeds[index] = MIN_SPEED + progress;
-					break;
-				case R.id.leftDown:
-					index = 1;
-					speeds[index] = MIN_SPEED + progress;
-					break;
-				case R.id.rightUp:
-					index = 2;
-					speeds[index] = MIN_SPEED + progress;
-					break;
-				case R.id.rightDown:
-					index = 3;
-					speeds[index] = MIN_SPEED + progress;
-					break;
+			if(fromUser){
+				if (isLocked) {
+					setSpeedToAllMotors(progress);
+					updateTextview(0, speeds[0], true);
+				} else {
+					int index = 0;
+					switch (seekBar.getId()) {
+						case R.id.leftUp:
+							index = 0;
+							speeds[index] = MIN_SPEED + progress;
+							break;
+						case R.id.leftDown:
+							index = 1;
+							speeds[index] = MIN_SPEED + progress;
+							break;
+						case R.id.rightUp:
+							index = 2;
+							speeds[index] = MIN_SPEED + progress;
+							break;
+						case R.id.rightDown:
+							index = 3;
+							speeds[index] = MIN_SPEED + progress;
+							break;
+					}
+					updateTextview(index, speeds[index], false);
 				}
-				updateTextview(index, speeds[index], false);
+				mUsbHandler.updateSendingData(speedToString());
 			}
-			mUsbHandler.updateSendingData(speedToString());
 		}
 	};
 
 	private int[] speeds = { MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED };
+	private int[] outputSpeeds = { MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED};
 	private boolean[] speedsUp = { true, true, true, true };
+	private ArrayList<PIDController> pidControllers = new ArrayList<PIDController>();
 	private boolean isLocked = false;
 	private float[] accel = new float[3];
 	private float[] magnet = new float[3];
 	private float[] gyro = new float[3];
 	private int ratio = 0;
-	private float[][] vectors = new float[4][2];
-
+	private Vector3 smoothAcc;
+	private float[][] vectors = {
+			{1, -1, 0},
+			{1, 1, 0},
+			{-1, -1, 0},
+			{-1, 1, 0}
+	};
+	
+	class Vector3
+	{
+		float x;
+		float y;
+		float z;
+		public Vector3(float x, float y, float z){
+			this.x = x;
+			this.y = y;
+			this.z = z;
+		}
+	}
+	
+	LinkedList<Vector3> prevAccelDatas = new LinkedList<Vector3>();
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -130,7 +160,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 				// Toast.makeText(getApplicationContext(), message,
 				// Toast.LENGTH_SHORT).show();
 				parseReceivedMessage(message);
-				mUsbHandler.updateSendingData(message);
+//				calculateSpeed();
+//				mUsbHandler.updateSendingData(speedToString());
 			}
 
 			@Override
@@ -167,10 +198,12 @@ public class MainActivity extends Activity implements SensorEventListener {
 		leftDownSeekBar = (SeekBar) findViewById(R.id.leftDown);
 		rightUpSeekBar = (SeekBar) findViewById(R.id.rightUp);
 		rightDownSeekBar = (SeekBar) findViewById(R.id.rightDown);
+		
 		leftUpSeekBar.setMax(MAX_SPEED - MIN_SPEED);
 		leftDownSeekBar.setMax(MAX_SPEED - MIN_SPEED);
 		rightUpSeekBar.setMax(MAX_SPEED - MIN_SPEED);
 		rightDownSeekBar.setMax(MAX_SPEED - MIN_SPEED);
+		
 		leftUpSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
 		leftDownSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
 		rightUpSeekBar.setOnSeekBarChangeListener(mOnSeekBarChangeListener);
@@ -188,18 +221,48 @@ public class MainActivity extends Activity implements SensorEventListener {
 				mListener);
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 		initSensors();
+		
+		for(int pidNum = 0 ; pidNum < 4 ; pidNum++)
+		{
+			PIDController pidController = new PIDController(0,10,5,10,PIDController.Direction.normal);
+			
+			pidController.SetPoint = 0;
+			pidController.Input = 0;
+			pidController.SetMode(true);
+			pidControllers.add(pidController);
+		}
+	}
+	
+
+
+	protected void calculateSpeed() {
+		
+		smoothAcc = this.GetAccAverage();
+		
+		for(int i = 0; i < speeds.length; i++){
+			
+			PIDController pidController = pidControllers.get(i);
+			
+			pidController.Input = -(vectors[i][0] * smoothAcc.x + vectors[i][1] * smoothAcc.y + vectors[i][2] * smoothAcc.z);
+			pidController.Compute();
+			
+			outputSpeeds[i] = (int) (speeds[i] + pidController.Output);
+			
+			updateTextview(i, outputSpeeds[i], false);
+		}
+		
 	}
 
 	private void initSensors() {
 		mSensorManager.registerListener(this,
 				mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-				SensorManager.SENSOR_DELAY_FASTEST);
+				SensorManager.SENSOR_DELAY_GAME);
 		mSensorManager.registerListener(this,
 				mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-				SensorManager.SENSOR_DELAY_FASTEST);
+				SensorManager.SENSOR_DELAY_GAME);
 		mSensorManager.registerListener(this,
 				mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD),
-				SensorManager.SENSOR_DELAY_FASTEST);
+				SensorManager.SENSOR_DELAY_GAME);
 
 	}
 
@@ -208,12 +271,15 @@ public class MainActivity extends Activity implements SensorEventListener {
 		String[] tokens = data.split(",");
 		if (tokens.length > 0) {
 			for (int i = 0; i < tokens.length; i++) {
-				speeds[i] = Integer.parseInt(tokens[i]);
-				// updateProgressBar(i, speeds[i] - MIN_SPEED);
-				updateTextview(i, speeds[i], false);
+				if(i == 4){
+					ratio = Integer.parseInt(tokens[i]);
+				}else{
+					speeds[i] = Integer.parseInt(tokens[i]);
+//					updateTextview(i, speeds[i], false);
+				}
 			}
 		}
-
+//		mTextView.setText(message);
 	}
 
 	protected void setSpeedToAllMotors(int progress) {
@@ -313,8 +379,14 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 	private String speedToString() {
 		String value = "";
-		for (int i = 0; i < speeds.length; i++) {
-			value += Integer.toString(speeds[i]);
+		for (int i = 0; i < outputSpeeds.length; i++) {
+			if(outputSpeeds[i] >= MIN_SPEED && outputSpeeds[i] <= MAX_SPEED){
+				value += Integer.toString(outputSpeeds[i]);
+			}else if(outputSpeeds[i] > MAX_SPEED){
+				value += Integer.toString(MAX_SPEED);
+			}else{
+				value += Integer.toString(MIN_SPEED);
+			}
 			value += ',';
 		}
 		value += '\n';
@@ -339,15 +411,25 @@ public class MainActivity extends Activity implements SensorEventListener {
 			default:
 				break;
 		}
+		
+		StoreAcc(new Vector3(accel[0],accel[1],accel[2]));
+		
+		
+		calculateSpeed();
+		mUsbHandler.updateSendingData(speedToString());
 		updateSensorTextView();
 	}
 	
 	private void updateSensorTextView(){
 		String data = "";
-		for(int i = 0; i < accel.length; i++){
-			data += String.format("%.2f", accel[i]);
+		//for(int i = 0; i < accel.length; i++){
+			data += String.format("%.2f", smoothAcc.x);
 			data += ",";
-		}
+			data += String.format("%.2f", smoothAcc.y);
+			data += ",";
+			data += String.format("%.2f", smoothAcc.z);
+			data += ",";
+		//}
 		data += "\n";
 		for(int i = 0; i < gyro.length; i++){
 			data += String.format("%.2f", gyro[i]);
@@ -355,6 +437,34 @@ public class MainActivity extends Activity implements SensorEventListener {
 		}
 		data += "\n";
 		sensorDataTextView.setText(data);
+	}
+	
+	public void StoreAcc(Vector3 v3)
+	{
+		this.prevAccelDatas.add(v3);
+		
+		while(this.prevAccelDatas.size()>MAX_SMOOTH_COUNT)
+		{
+			this.prevAccelDatas.remove(0);
+		}
+	}
+	
+	public Vector3 GetAccAverage()
+	{
+		Vector3 sum = new Vector3(0,0,0);
+		
+		for(Vector3 v3 : this.prevAccelDatas)
+		{
+			sum.x += v3.x;
+			sum.y += v3.y;
+			sum.z += v3.z;
+		}
+		
+		sum.x /= prevAccelDatas.size();
+		sum.y /= prevAccelDatas.size();
+		sum.z /= prevAccelDatas.size();
+		
+		return sum;
 	}
 
 }
