@@ -56,26 +56,6 @@
         android:layout_below="@+id/leftUpSpeedText"
         android:layout_marginTop="17dp" />
 
-    <Button
-        android:id="@+id/buttonDisconnect"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignRight="@+id/rightDown"
-        android:layout_below="@+id/rightDownSpeedText"
-        android:layout_marginTop="20dp"
-        android:onClick="onDisconnectClick"
-        android:text="Disconnect" />
-
-    <Button
-        android:id="@+id/buttonConnect"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/buttonDisconnect"
-        android:layout_alignBottom="@+id/buttonDisconnect"
-        android:layout_alignLeft="@+id/rightDown"
-        android:onClick="onConnectClick"
-        android:text="Connect" />
-
     <TextView
         android:id="@+id/leftDownSpeedText"
         android:layout_width="wrap_content"
@@ -90,15 +70,6 @@
         android:layout_height="wrap_content"
         android:layout_alignLeft="@+id/leftDownSpeedText"
         android:layout_centerVertical="true"
-        android:text="TextView" />
-
-    <TextView
-        android:id="@+id/rightDownSpeedText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignRight="@+id/buttonConnect"
-        android:layout_below="@+id/rightDown"
-        android:layout_marginTop="22dp"
         android:text="TextView" />
 
     <SeekBar
@@ -116,5 +87,49 @@
         android:layout_alignTop="@+id/textWifi"
         android:layout_marginLeft="14dp"
         android:text="Button" />
+
+    <Button
+        android:id="@+id/buttonDisconnect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignRight="@+id/rightDown"
+        android:layout_marginBottom="22dp"
+        android:onClick="onDisconnectClick"
+        android:text="Disconnect" />
+
+    <Button
+        android:id="@+id/buttonConnect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/buttonDisconnect"
+        android:layout_alignBottom="@+id/buttonDisconnect"
+        android:layout_alignLeft="@+id/rightDown"
+        android:onClick="onConnectClick"
+        android:text="Connect" />
+
+    <TextView
+        android:id="@+id/rightDownSpeedText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/rightUpSpeedText"
+        android:layout_below="@+id/rightDown"
+        android:text="TextView" />
+
+    <SeekBar
+        android:id="@+id/balanceBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/rightDown"
+        android:layout_below="@+id/rightDownSpeedText"
+        android:layout_marginTop="14dp" />
+
+    <TextView
+        android:id="@+id/balanceBarText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/buttonConnect"
+        android:layout_below="@+id/balanceBar"
+        android:text="TextView" />
 
 </RelativeLayout>
