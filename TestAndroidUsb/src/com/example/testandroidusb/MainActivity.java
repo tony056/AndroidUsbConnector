@@ -5,6 +5,9 @@ import java.sql.Struct;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
+import com.example.eulerangleconverter.YPREventListener;
+import com.example.eulerangleconverter.YPREventListener.Listener;
+
 import HotSpotCommander.HotSpotServerEventHandler;
 import HotSpotCommander.HotSpotTCPServer;
 import PIDController.PIDController;
@@ -29,7 +32,7 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends Activity implements SensorEventListener {
+public class MainActivity extends Activity {
 
 	private static final int MIN_SPEED = 1000;
 	private static final int MAX_SPEED = 2000;
@@ -118,8 +121,22 @@ public class MainActivity extends Activity implements SensorEventListener {
 
 	private int[] speeds = { MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED };
 	private int[] outputSpeeds = { MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED};
-	private boolean[] speedsUp = { true, true, true, true };
-	private ArrayList<PIDController> pidControllers = new ArrayList<PIDController>();
+	private PIDController yawPidController;
+	private PIDController pitchPidController;
+	private PIDController rollPidController;
+	private YPREventListener mYprEventListener;
+	private Listener yprListener = new Listener() {
+		@Override
+		public void onOrientationChanged(float yaw, float pitch, float roll) {
+			ypr[0] = yaw;
+			ypr[1] = pitch;
+			ypr[2] = roll;
+			calculateSpeed(yaw, pitch, roll);
+			mUsbHandler.updateSendingData(speedToString());
+			updateSensorTextView();
+		}
+	};
+	private float[] ypr = new float[3];
 	private boolean isLocked = false;
 	private float[] accel = new float[3];
 	private float[] magnet = new float[3];
@@ -220,52 +237,48 @@ public class MainActivity extends Activity implements SensorEventListener {
 		mUsbHandler = new UsbHandler(mUsbManager, getApplicationContext(),
 				mListener);
 		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-		initSensors();
+		mYprEventListener = new YPREventListener(mSensorManager);
+		mYprEventListener.initYPREventListener();
+		mYprEventListener.startListening(yprListener);
 		
-		for(int pidNum = 0 ; pidNum < 4 ; pidNum++)
-		{
-			PIDController pidController = new PIDController(0,10,5,10,PIDController.Direction.normal);
-			
-			pidController.SetPoint = 0;
-			pidController.Input = 0;
-			pidController.SetMode(true);
-			pidControllers.add(pidController);
-		}
+		yawPidController = new PIDController(0, 4, 0.2, 1, PIDController.Direction.normal);
+		pitchPidController = new PIDController(0, 4, 0.2, 1, PIDController.Direction.normal);
+		rollPidController = new PIDController(0, 4, 0.2, 1, PIDController.Direction.normal);
+		
+		yawPidController.SetMode(true);
+		pitchPidController.SetMode(true);
+		rollPidController.SetMode(true);
+		
+		yawPidController.SetOutputLimits(-50, 50);
+		pitchPidController.SetOutputLimits(-100, 100);
+		rollPidController.SetOutputLimits(-100, 100);
 	}
 	
 
 
-	protected void calculateSpeed() {
+	protected void calculateSpeed(float yaw, float pitch, float roll) {
 		
-		smoothAcc = this.GetAccAverage();
+		yawPidController.Input = yaw;
+		pitchPidController.Input = pitch;
+		rollPidController.Input = roll;
+		yawPidController.Compute();
+		pitchPidController.Compute();
+		rollPidController.Compute();
+		
+		double yawOffset = yawPidController.Output;
+		double pitchOffset = pitchPidController.Output;
+		double rollOffset = rollPidController.Output;
+		outputSpeeds[0] = (int) (speeds[0] - pitchOffset + yawOffset);
+		outputSpeeds[1] = (int) (speeds[1] - rollOffset - yawOffset);
+		outputSpeeds[2] = (int) (speeds[2] + pitchOffset + yawOffset);
+		outputSpeeds[3] = (int) (speeds[3] + rollOffset - yawOffset);
 		
 		for(int i = 0; i < speeds.length; i++){
-			
-			PIDController pidController = pidControllers.get(i);
-			
-			pidController.Input = -(vectors[i][0] * smoothAcc.x + vectors[i][1] * smoothAcc.y + vectors[i][2] * smoothAcc.z);
-			pidController.Compute();
-			
-			outputSpeeds[i] = (int) (speeds[i] + pidController.Output);
-			
 			updateTextview(i, outputSpeeds[i], false);
 		}
-		
 	}
 
-	private void initSensors() {
-		mSensorManager.registerListener(this,
-				mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-				SensorManager.SENSOR_DELAY_GAME);
-		mSensorManager.registerListener(this,
-				mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-				SensorManager.SENSOR_DELAY_GAME);
-		mSensorManager.registerListener(this,
-				mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD),
-				SensorManager.SENSOR_DELAY_GAME);
-
-	}
-
+	
 	protected void parseReceivedMessage(String message) {
 		String data = message.substring(0, message.length() - 1);
 		String[] tokens = data.split(",");
@@ -323,7 +336,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 	protected void onPause() {
 		super.onPause();
 		mUsbHandler.removeMessages(MESSAGE_REFRESH);
-		mSensorManager.unregisterListener(this);
+//		mSensorManager.unregisterListener(this);
 	}
 
 	public void updateReceivedData(String data) {
@@ -393,41 +406,16 @@ public class MainActivity extends Activity implements SensorEventListener {
 		return value;
 	}
 
-	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-		// TODO Auto-generated method stub
 
-	}
-
-	@Override
-	public void onSensorChanged(SensorEvent event) {
-		switch (event.sensor.getType()) {
-			case Sensor.TYPE_ACCELEROMETER:
-				System.arraycopy(event.values, 0, accel, 0, 3);
-				break;
-			case Sensor.TYPE_GYROSCOPE:
-				System.arraycopy(event.values, 0, gyro, 0, 3);
-				break;
-			default:
-				break;
-		}
-		
-		StoreAcc(new Vector3(accel[0],accel[1],accel[2]));
-		
-		
-		calculateSpeed();
-		mUsbHandler.updateSendingData(speedToString());
-		updateSensorTextView();
-	}
 	
 	private void updateSensorTextView(){
 		String data = "";
 		//for(int i = 0; i < accel.length; i++){
-			data += String.format("%.2f", smoothAcc.x);
+			data += String.format("%.2f", ypr[0]);
 			data += ",";
-			data += String.format("%.2f", smoothAcc.y);
+			data += String.format("%.2f", ypr[1]);
 			data += ",";
-			data += String.format("%.2f", smoothAcc.z);
+			data += String.format("%.2f", ypr[2]);
 			data += ",";
 		//}
 		data += "\n";

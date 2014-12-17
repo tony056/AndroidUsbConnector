@@ -8,5 +8,6 @@
 	<classpathentry kind="src" path="gen"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/HotSpotCommanderAPI"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/PIDController"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/EulerAngleConverter"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>
