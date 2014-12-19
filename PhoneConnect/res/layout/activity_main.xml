@@ -80,15 +80,6 @@
         android:layout_below="@+id/rightUpSpeedText" />
 
     <Button
-        android:id="@+id/lock"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/buttonDisconnect"
-        android:layout_alignTop="@+id/textWifi"
-        android:layout_marginLeft="14dp"
-        android:text="Button" />
-
-    <Button
         android:id="@+id/buttonDisconnect"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -131,5 +122,36 @@
         android:layout_alignRight="@+id/buttonConnect"
         android:layout_below="@+id/balanceBar"
         android:text="TextView" />
+
+    <RadioGroup
+        android:id="@+id/radioGroup1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:orientation="horizontal" >
+
+        <RadioButton
+            android:id="@+id/yawRadio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="Yaw" />
+
+        <RadioButton
+            android:id="@+id/pitchRadio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pitch" />
+    	<RadioButton
+        android:id="@+id/rollRadio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignRight="@+id/leftUp"
+        android:layout_alignTop="@+id/radioGroup1"
+        android:text="Roll" />
+    </RadioGroup>
+
+    
 
 </RelativeLayout>

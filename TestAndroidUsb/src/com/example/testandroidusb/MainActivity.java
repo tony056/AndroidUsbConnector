@@ -241,17 +241,17 @@ public class MainActivity extends Activity {
 		mYprEventListener.initYPREventListener();
 		mYprEventListener.startListening(yprListener);
 		
-		yawPidController = new PIDController(0, 4, 0.2, 1, PIDController.Direction.normal);
-		pitchPidController = new PIDController(0, 4, 0.2, 1, PIDController.Direction.normal);
-		rollPidController = new PIDController(0, 4, 0.2, 1, PIDController.Direction.normal);
+		yawPidController = new PIDController(0, 0.0, 0.0, 0, PIDController.Direction.normal);
+		pitchPidController = new PIDController(0, 0.75, 1.50, 0, PIDController.Direction.normal);
+		rollPidController = new PIDController(0, 0.78, 1.56, 0, PIDController.Direction.normal);
 		
 		yawPidController.SetMode(true);
 		pitchPidController.SetMode(true);
 		rollPidController.SetMode(true);
 		
 		yawPidController.SetOutputLimits(-50, 50);
-		pitchPidController.SetOutputLimits(-100, 100);
-		rollPidController.SetOutputLimits(-100, 100);
+		pitchPidController.SetOutputLimits(-300, 300);
+		rollPidController.SetOutputLimits(-300, 300);
 	}
 	
 
@@ -282,18 +282,51 @@ public class MainActivity extends Activity {
 	protected void parseReceivedMessage(String message) {
 		String data = message.substring(0, message.length() - 1);
 		String[] tokens = data.split(",");
+		int yprIndex = 0;
+		float[] kValue = new float[3];
 		if (tokens.length > 0) {
 			for (int i = 0; i < tokens.length; i++) {
-				if(i == 4){
+				if(i == tokens.length - 1){
 					ratio = Integer.parseInt(tokens[i]);
+				}else if(i >= 4){
+					speeds[i - 4] = Integer.parseInt(tokens[i]);
+				}else if(i == 0){
+					yprIndex = Integer.parseInt(tokens[i]);
 				}else{
-					speeds[i] = Integer.parseInt(tokens[i]);
-//					updateTextview(i, speeds[i], false);
+					kValue[i - 1] = Float.parseFloat(tokens[i]); 
 				}
 			}
 		}
-//		mTextView.setText(message);
+		updateKValue(yprIndex, kValue);
 	}
+
+	private void updateKValue(int yprIndex, float[] kValue) {
+		double Kp = kValue[0];
+		double Ki = kValue[1];
+		double Kd = kValue[2];
+		switch (yprIndex) {
+			case 0:
+				yawPidController.SetTunings(Kp, Ki, Kd);
+				break;
+			case 1:
+				pitchPidController.SetTunings(Kp, Ki, Kd);
+				break;
+			case 2:
+				rollPidController.SetTunings(Kp, Ki, Kd);
+				break;
+			default:
+				break;
+		}
+		mTextView.setText("" + yprIndex);
+		
+		leftDownSpeedTextView.setText("" + Kp);
+		rightUpSpeedTextView.setText("" + Ki);
+		rightDownSpeedTextView.setText("" + Kd);
+		
+		
+	}
+
+
 
 	protected void setSpeedToAllMotors(int progress) {
 		leftUpSeekBar.setProgress(progress);

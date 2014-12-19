@@ -71,7 +71,7 @@ public class PIDController {
 		_dispKi = Ki;
 		_dispKd = Kd;
 		
-		double sampleTimeInSec = (((double)_sampleTime/1000));
+		double sampleTimeInSec = (((double)_sampleTime/1000.0f));
 		_kp = Kp;
 		_ki = Ki * sampleTimeInSec;
 		_kd = Kd / sampleTimeInSec;

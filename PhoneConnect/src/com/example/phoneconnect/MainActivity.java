@@ -7,6 +7,7 @@ import java.util.List;
 import HotSpotCommander.HotSpotClientEventHandler;
 import HotSpotCommander.HotSpotClientInterface;
 import HotSpotCommander.HotSpotTCPClient;
+import android.R.integer;
 import android.content.Context;
 import android.net.DhcpInfo;
 import android.net.wifi.WifiManager;
@@ -15,9 +16,10 @@ import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
@@ -48,6 +50,10 @@ public class MainActivity extends ActionBarActivity {
 	private TextView rightUpSpeedTextView;
 	private TextView rightDownSpeedTextView;
 	private TextView balanceTextView;
+	private RadioButton yawRadioButton;
+	private RadioButton pitchRadioButton;
+	private RadioButton rollRadioButton;
+	private RadioGroup radioGroup;
 	
 	private OnSeekBarChangeListener mOnSeekBarChangeListener = new OnSeekBarChangeListener() {
 		
@@ -65,50 +71,81 @@ public class MainActivity extends ActionBarActivity {
 		public void onProgressChanged(SeekBar seekBar, int progress,
 				boolean fromUser) {
 			
-		if(fromUser)
-		{
-			if(seekBar.getId() == R.id.balanceBar)
+			if(fromUser)
 			{
-				speeds[4] = BALANCE_MIN + progress;
-				balanceTextView.setText(""+speeds[4]);
-			}
-			else if(isLocked){
-					setSpeedToAllMotors(progress);
-					updateTextview(0, speeds[0], true);
-				}else{
-					int index = 0;
+				if(seekBar.getId() == R.id.balanceBar)
+				{
+					speeds[4] = BALANCE_MIN + progress;
+					balanceTextView.setText(""+speeds[4]);
+				}
+				else if(isLocked){
+//					setSpeedToAllMotors(progress);
+//					updateTextview(0, speeds[0], true);
+					int kValueIndex = 0;
 					switch (seekBar.getId()) {
-					case R.id.leftUp:
-						index = 0;
-						speeds[index] = MIN_SPEED + progress;
-						break;
-					case R.id.leftDown:
-						index = 1;
-						speeds[index] = MIN_SPEED + progress;
-						break;
-					case R.id.rightUp:
-						index = 2;
-						speeds[index] = MIN_SPEED + progress;
-						break;
-					case R.id.rightDown:
-						index = 3;
-						speeds[index] = MIN_SPEED + progress;
-						break;
-					case R.id.balanceBar:
-						break;
+						case R.id.leftUp:
+							setSpeedToAllMotors(progress);
+							textEvents.setText(kToString() + speedToString());
+							sendMessage(kToString() + speedToString());
+							break;
+						case R.id.leftDown:
+							kValueIndex = 0;
+							updateK(kValueIndex, yprIndex, progress);
+							textEvents.setText(kToString() + speedToString());
+							sendMessage(kToString() + speedToString());
+							break;
+						case R.id.rightUp:
+							kValueIndex = 1;
+							updateK(kValueIndex, yprIndex, progress);
+							textEvents.setText(kToString() + speedToString());
+							sendMessage(kToString() + speedToString());
+							break;
+						case R.id.rightDown:
+							kValueIndex = 2;
+							updateK(kValueIndex, yprIndex, progress);
+							textEvents.setText(kToString() + speedToString());
+							sendMessage(kToString() + speedToString());
+							break;
+						default:
+							break;
 					}
 					
-					if(index != 4)
-						updateTextview(index, speeds[index], false);
 				}
-				sendMessage(speedToString());
+				
 			}
 		}
 	};
 	
-	private int[] speeds = {MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED,BALANCE_MIN};
-	private boolean isLocked = false;
+	private RadioGroup.OnCheckedChangeListener mRadioListener = new RadioGroup.OnCheckedChangeListener() {
+		@Override
+		public void onCheckedChanged(RadioGroup group, int checkedId) {
+			switch (checkedId) {
+			case R.id.yawRadio:
+				yprIndex = 0;
+				break;
+			case R.id.pitchRadio:
+				yprIndex = 1;
+				break;
+			case R.id.rollRadio:
+				yprIndex = 2;
+				break;
+			default:
+				break;
+			}
+			updateSeekView(yprIndex);
+		}
+	};
 	
+	private int[] speeds = {MIN_SPEED, MIN_SPEED, MIN_SPEED, MIN_SPEED,BALANCE_MIN};
+	private float[] k_min = {0.0f, 0.0f, 0.0f};
+	private boolean isLocked = true;
+	private int yprIndex = 0;
+	private int MAX_K = 10;
+	private float[][] kValue = {
+			{0.0f, 0.0f, 0.0f},
+			{0.75f, 1.50f, 0.0f},
+			{0.78f, 1.56f, 0.0f}
+	};
 	
 	final int EVENT_COUNT = 3;
 	List<String> eventList = new ArrayList<String>();
@@ -128,14 +165,6 @@ public class MainActivity extends ActionBarActivity {
         String ip = getAccessPointIP();
         wifiText.setText("\n Connect to"+ip);
         
-        lockButton = (Button) findViewById(R.id.lock);
-        lockButton.setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				isLocked = !isLocked;
-				lockButton.setText("" + isLocked);
-			}
-		});
         
         leftUpSeekBar = (SeekBar) findViewById(R.id.leftUp);
 		leftDownSeekBar = (SeekBar) findViewById(R.id.leftDown);
@@ -160,7 +189,12 @@ public class MainActivity extends ActionBarActivity {
 		rightUpSpeedTextView = (TextView) findViewById(R.id.rightUpSpeedText);
 		rightDownSpeedTextView = (TextView) findViewById(R.id.rightDownSpeedText);
 		balanceTextView = (TextView) findViewById(R.id.balanceBarText);
-
+		
+		radioGroup = (RadioGroup) findViewById(R.id.radioGroup1);
+		yawRadioButton = (RadioButton) findViewById(R.id.yawRadio);
+		pitchRadioButton = (RadioButton) findViewById(R.id.pitchRadio);
+		rollRadioButton = (RadioButton) findViewById(R.id.rollRadio);
+		radioGroup.setOnCheckedChangeListener(mRadioListener);
         
         client = new HotSpotTCPClient();
         client.RegisterHandler(new HotSpotClientEventHandler(){
@@ -190,7 +224,20 @@ public class MainActivity extends ActionBarActivity {
 
     }
     
-    protected void sendMessage(String msg) {
+    protected void updateSeekView(int index) {
+		leftDownSeekBar.setProgress((int) (kValue[index][0] * 100));
+		rightUpSeekBar.setProgress((int) (kValue[index][1] * 100));
+		rightDownSeekBar.setProgress((int) (kValue[index][2] * 100));
+	}
+
+	protected void updateK(int kValueIndex, int yprIndex2, int progress) {
+		if(progress > 0)
+			kValue[yprIndex2][kValueIndex] = 1.0f * (progress / 100.0f + k_min[kValueIndex]);
+		else 
+			kValue[yprIndex2][kValueIndex] = k_min[kValueIndex];
+	}
+
+	protected void sendMessage(String msg) {
     	if(client.IsConnected())
     	{
 			client.SendMessage(msg);
@@ -315,9 +362,9 @@ public class MainActivity extends ActionBarActivity {
     private void updateTextview(int index, int speed, boolean locked){
 		if(locked){
 			leftUpSpeedTextView.setText("" + speed);
-			leftDownSpeedTextView.setText("" + speed);
-			rightUpSpeedTextView.setText("" + speed);
-			rightDownSpeedTextView.setText("" + speed);
+//			leftDownSpeedTextView.setText("" + speed);
+//			rightUpSpeedTextView.setText("" + speed);
+//			rightDownSpeedTextView.setText("" + speed);
 			
 		}else{
 			switch (index) {
@@ -342,9 +389,9 @@ public class MainActivity extends ActionBarActivity {
     
     protected void setSpeedToAllMotors(int progress) {
 		leftUpSeekBar.setProgress(progress);
-		leftDownSeekBar.setProgress(progress);
-		rightUpSeekBar.setProgress(progress);
-		rightDownSeekBar.setProgress(progress);
+//		leftDownSeekBar.setProgress(progress);
+//		rightUpSeekBar.setProgress(progress);
+//		rightDownSeekBar.setProgress(progress);
 		for(int i = 0;i < speeds.length; i++){
 			speeds[i] = MIN_SPEED + progress;
 		}
@@ -352,6 +399,7 @@ public class MainActivity extends ActionBarActivity {
     
     private String speedToString(){
 		String value = "";
+		
 		for(int i = 0; i < speeds.length; i++){
 			value += Integer.toString(speeds[i]);
 			value += ',';
@@ -359,4 +407,13 @@ public class MainActivity extends ActionBarActivity {
 //		value += '\n';
 		return value;
 	}
+    
+    private String kToString(){
+    	String data = "" + Integer.toString(yprIndex) + ",";
+    	for(int i = 0; i < 3; i++){
+    		data += String.format("%.2f", kValue[yprIndex][i]);
+    		data += ",";
+    	}
+    	return data;
+    }
 }

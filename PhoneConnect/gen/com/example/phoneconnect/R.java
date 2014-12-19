@@ -1091,14 +1091,14 @@ containing a value of this type.
         public static final int action_menu_divider=0x7f0b0002;
         public static final int action_menu_presenter=0x7f0b0003;
         public static final int action_mode_close_button=0x7f0b0024;
-        public static final int action_settings=0x7f0b004b;
+        public static final int action_settings=0x7f0b004e;
         public static final int activity_chooser_view_content=0x7f0b0025;
         public static final int always=0x7f0b000f;
-        public static final int balanceBar=0x7f0b0049;
-        public static final int balanceBarText=0x7f0b004a;
+        public static final int balanceBar=0x7f0b0048;
+        public static final int balanceBarText=0x7f0b0049;
         public static final int beginning=0x7f0b0016;
         public static final int buttonConnect=0x7f0b0040;
-        public static final int buttonDisconnect=0x7f0b0047;
+        public static final int buttonDisconnect=0x7f0b0046;
         public static final int checkbox=0x7f0b002d;
         public static final int collapseActionView=0x7f0b0010;
         public static final int default_activity_button=0x7f0b0028;
@@ -1120,18 +1120,20 @@ containing a value of this type.
         public static final int leftUpSpeedText=0x7f0b003f;
         public static final int listMode=0x7f0b0006;
         public static final int list_item=0x7f0b0029;
-        public static final int lock=0x7f0b0046;
         public static final int middle=0x7f0b0018;
         public static final int never=0x7f0b0012;
         public static final int none=0x7f0b0019;
         public static final int normal=0x7f0b0007;
+        public static final int pitchRadio=0x7f0b004c;
         public static final int progress_circular=0x7f0b0004;
         public static final int progress_horizontal=0x7f0b0005;
         public static final int radio=0x7f0b002f;
+        public static final int radioGroup1=0x7f0b004a;
         public static final int rightDown=0x7f0b0042;
-        public static final int rightDownSpeedText=0x7f0b0048;
+        public static final int rightDownSpeedText=0x7f0b0047;
         public static final int rightUp=0x7f0b0041;
         public static final int rightUpSpeedText=0x7f0b0045;
+        public static final int rollRadio=0x7f0b004d;
         public static final int search_badge=0x7f0b0032;
         public static final int search_bar=0x7f0b0031;
         public static final int search_button=0x7f0b0033;
@@ -1156,6 +1158,7 @@ containing a value of this type.
         public static final int up=0x7f0b0021;
         public static final int useLogo=0x7f0b000e;
         public static final int withText=0x7f0b0013;
+        public static final int yawRadio=0x7f0b004b;
     }
     public static final class integer {
         /**  The maximum number of action buttons that should be permitted within
